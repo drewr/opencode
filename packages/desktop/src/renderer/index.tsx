@@ -25,7 +25,7 @@ import { initI18n, t } from "./i18n"
 import { resetZoom, setPinchZoomEnabled, webviewZoom, zoomIn, zoomOut } from "./webview-zoom"
 import "./styles.css"
 import { Splash } from "@opencode-ai/ui/logo"
-import { useTheme } from "@opencode-ai/ui/theme"
+import { useTheme } from "@opencode-ai/ui/theme/context"
 
 const root = document.getElementById("root")
 if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
@@ -357,11 +357,7 @@ render(() => {
     )
 
     const ready = createMemo(
-      () =>
-        !defaultServer.loading &&
-        !sidecar.loading &&
-        !windowCount.loading &&
-        !locale.loading,
+      () => !defaultServer.loading && !sidecar.loading && !windowCount.loading && !locale.loading,
     )
     const servers = createMemo(() => {
       const data = sidecar()
@@ -402,15 +398,15 @@ render(() => {
       if (item?.runtime.kind === "ready") return key
       return ServerConnection.Key.make("sidecar")
     })
-    if (!ready()) return splash
-
     return (
-      <Show when={effectiveDefaultServer()} keyed>
-        {(key) => (
-          <AppInterface defaultServer={key} servers={servers()} router={MemoryRouter}>
-            <Inner />
-          </AppInterface>
-        )}
+      <Show when={ready()} fallback={splash}>
+        <Show when={effectiveDefaultServer()} keyed>
+          {(key) => (
+            <AppInterface defaultServer={key} servers={servers()} router={MemoryRouter}>
+              <Inner />
+            </AppInterface>
+          )}
+        </Show>
       </Show>
     )
   }

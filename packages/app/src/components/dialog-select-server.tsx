@@ -21,6 +21,7 @@ import { normalizeServerUrl, ServerConnection, useServer } from "@/context/serve
 import { useWslServers } from "@/context/wsl-servers"
 import { type ServerHealth, useCheckServerHealth } from "@/utils/server-health"
 import { useSettings } from "@/context/settings"
+import { useTabs } from "@/context/tabs"
 
 const DEFAULT_USERNAME = "opencode"
 
@@ -204,6 +205,7 @@ export function DialogSelectServer() {
 export function useServerManagementController(options: { onSelect?: () => void } = {}) {
   const navigate = useNavigate()
   const server = useServer()
+  const tabs = useTabs()
   const global = useGlobal()
   const platform = usePlatform()
   const language = useLanguage()
@@ -354,12 +356,14 @@ export function useServerManagementController(options: { onSelect?: () => void }
   }))
 
   const replaceServer = (original: ServerConnection.Http, next: ServerConnection.Http) => {
+    const originalKey = ServerConnection.key(original)
     const active = server.key
+    tabs.removeServer(originalKey)
     const newConn = server.add(next)
     if (!newConn) return
-    const nextActive = active === ServerConnection.key(original) ? ServerConnection.key(newConn) : active
+    const nextActive = active === originalKey ? ServerConnection.key(newConn) : active
     if (nextActive) server.setActive(nextActive)
-    server.remove(ServerConnection.key(original))
+    server.remove(originalKey)
   }
 
   const items = createMemo(() => {
@@ -591,6 +595,7 @@ export function useServerManagementController(options: { onSelect?: () => void }
   })
 
   async function handleRemove(key: ServerConnection.Key) {
+    tabs.removeServer(key)
     server.remove(key)
     if (defaultKey() === key) await setDefault(null)
   }
@@ -696,7 +701,9 @@ export function ServerConnectionList(props: { controller: ReturnType<typeof useS
                         </Show>
                         <Show when={props.controller.canDefault() && props.controller.defaultKey() === key}>
                           <DropdownMenu.Item onSelect={() => void props.controller.setDefault(null)}>
-                            <DropdownMenu.ItemLabel>{language.t("dialog.server.menu.defaultRemove")}</DropdownMenu.ItemLabel>
+                            <DropdownMenu.ItemLabel>
+                              {language.t("dialog.server.menu.defaultRemove")}
+                            </DropdownMenu.ItemLabel>
                           </DropdownMenu.Item>
                         </Show>
                         <Show when={retryable() || props.controller.canDefault()}>
@@ -837,7 +844,11 @@ export function ServerConnectionList(props: { controller: ReturnType<typeof useS
                             </DropdownMenu.ItemLabel>
                           </DropdownMenu.Item>
                         </Show>
-                        <Show when={canRemove() && (i.type === "http" || canChangeDefault() || props.controller.canRetryWsl(i))}>
+                        <Show
+                          when={
+                            canRemove() && (i.type === "http" || canChangeDefault() || props.controller.canRetryWsl(i))
+                          }
+                        >
                           <DropdownMenu.Separator />
                         </Show>
                         <Show when={canRemove()}>
