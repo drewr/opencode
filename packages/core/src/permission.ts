@@ -166,7 +166,7 @@ export const layer = Layer.effect(
     const configured = EffectRuntime.fn("PermissionV2.configured")(function* (sessionID: SessionV2.ID) {
       const session = yield* sessions.get(sessionID)
       if (!session) return yield* new SessionV2.NotFoundError({ sessionID })
-      return (yield* agents.get(AgentV2.ID.make(session.agent ?? "build")))?.permissions ?? []
+      return (yield* agents.get(AgentV2.effectiveID(session.agent)))?.permissions ?? []
     })
 
     function denied(input: AssertInput, rules: Ruleset) {

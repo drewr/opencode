@@ -121,7 +121,7 @@ export const Plugin = PluginV2.define({
     ]
 
     yield* agent.update((editor) => {
-      editor.update(AgentV2.ID.make("build"), (item) => {
+      editor.update(AgentV2.defaultID, (item) => {
         item.description = "The default agent. Executes tools based on configured permissions."
         item.mode = "primary"
         item.permissions.push(
