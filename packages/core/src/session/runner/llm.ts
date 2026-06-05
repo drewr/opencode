@@ -133,11 +133,8 @@ export const layer = Layer.effect(
       )
 
     const effectiveAgent = (session: SessionSchema.Info) => AgentV2.effectiveID(session.agent)
-    const loadSystemContext = (sessionID: SessionSchema.ID) =>
-      getSession(sessionID).pipe(
-        Effect.flatMap((session) =>
-          Effect.all([systemContext.load(), skillGuidance.load(effectiveAgent(session))], { concurrency: "unbounded" }),
-        ),
+    const loadSystemContext = (agent: AgentV2.ID) =>
+      Effect.all([systemContext.load(), skillGuidance.load(agent)], { concurrency: "unbounded" }).pipe(
         Effect.map(SystemContext.combine),
       )
 
@@ -149,7 +146,7 @@ export const layer = Layer.effect(
       const agent = effectiveAgent(session)
       const initialized = yield* SessionContextEpoch.initialize(
         db,
-        loadSystemContext(sessionID),
+        loadSystemContext(agent),
         session.id,
         session.location,
         agent,
@@ -169,7 +166,7 @@ export const layer = Layer.effect(
         (yield* SessionContextEpoch.prepare(
           db,
           events,
-          loadSystemContext(sessionID),
+          loadSystemContext(agent),
           session.id,
           session.location,
           agent,

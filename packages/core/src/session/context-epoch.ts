@@ -18,6 +18,10 @@ type DatabaseService = Database.Interface["db"]
 class RevisionMismatch extends Error {}
 class LocationMismatch extends Error {}
 export class AgentMismatch extends Error {}
+export class AgentReplacementBlocked extends Schema.TaggedErrorClass<AgentReplacementBlocked>()(
+  "SessionContextEpoch.AgentReplacementBlocked",
+  { sessionID: SessionSchema.ID, previous: AgentV2.ID, current: AgentV2.ID },
+) {}
 
 const retryRevisionMismatch = <A, E>(attempt: () => Effect.Effect<A, E>): Effect.Effect<A, E> =>
   attempt().pipe(
@@ -52,7 +56,7 @@ export function prepare(
   sessionID: SessionSchema.ID,
   location: Location.Ref,
   agent: AgentV2.ID,
-): Effect.Effect<Prepared, SystemContext.InitializationBlocked> {
+): Effect.Effect<Prepared, SystemContext.InitializationBlocked | AgentReplacementBlocked> {
   return retryRevisionMismatch(() => prepareOnce(db, events, context, sessionID, location, agent)).pipe(
     Effect.withSpan("SessionContextEpoch.prepare"),
   )
@@ -74,10 +78,13 @@ const prepareOnce = Effect.fnUntraced(function* (
   }
 
   const snapshot = yield* Schema.decodeUnknownEffect(SystemContext.Snapshot)(stored.snapshot).pipe(Effect.orDie)
+  const replacingAgent = stored.agent !== agent
   const result =
-    stored.replacement_seq === null
+    stored.replacement_seq === null && !replacingAgent
       ? yield* SystemContext.reconcile(value, snapshot)
       : yield* SystemContext.replace(value, snapshot)
+  if (result._tag === "ReplacementBlocked" && replacingAgent)
+    return yield* new AgentReplacementBlocked({ sessionID, previous: stored.agent, current: agent })
   if (result._tag === "Unchanged" || result._tag === "ReplacementBlocked")
     return { baseline: stored.baseline, baselineSeq: stored.baseline_seq }
   if (result._tag === "ReplacementReady") {
@@ -190,6 +197,7 @@ const insert = Effect.fnUntraced(function* (
             .values({
               session_id: sessionID,
               baseline: generation.baseline,
+              agent,
               snapshot: generation.snapshot,
               baseline_seq: baselineSeq,
               revision: 0,
@@ -231,6 +239,7 @@ const replace = Effect.fnUntraced(function* (
             .update(SessionContextEpochTable)
             .set({
               baseline: generation.baseline,
+              agent,
               snapshot: generation.snapshot,
               baseline_seq: baselineSeq,
               replacement_seq: null,
