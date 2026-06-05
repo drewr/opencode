@@ -133,6 +133,13 @@ export const layer = Layer.effect(
       )
 
     const effectiveAgent = (session: SessionSchema.Info) => AgentV2.effectiveID(session.agent)
+    const sameModel = (left: ModelV2.Ref | undefined, right: ModelV2.Ref | undefined) =>
+      left === right ||
+      (left !== undefined &&
+        right !== undefined &&
+        left.id === right.id &&
+        left.providerID === right.providerID &&
+        left.variant === right.variant)
     const loadSystemContext = (agent: AgentV2.ID) =>
       Effect.all([systemContext.load(), skillGuidance.load(agent)], { concurrency: "unbounded" }).pipe(
         Effect.map(SystemContext.combine),
@@ -172,7 +179,8 @@ export const layer = Layer.effect(
           agent,
         ).pipe(retryAgentMismatch(undefined)))
       const current = yield* getSession(sessionID)
-      if (effectiveAgent(current) !== agent) return yield* Effect.die(new RetryTurn(undefined))
+      if (effectiveAgent(current) !== agent || !sameModel(current.model, session.model))
+        return yield* Effect.die(new RetryTurn(undefined))
       const model = yield* models.resolve(session)
       const context = yield* store.runnerContext(session.id, system.baselineSeq)
       const request = LLM.request({
@@ -192,6 +200,8 @@ export const layer = Layer.effect(
       })
       const withPublication = Semaphore.makeUnsafe(1).withPermit
       const publish = (event: LLMEvent) => withPublication(publisher.publish(event))
+      if (!(yield* SessionContextEpoch.current(db, session.id, agent, system.revision)))
+        return yield* Effect.die(new RetryTurn(undefined))
       const providerStream = llm.stream(request).pipe(
         Stream.runForEach((event) =>
           Effect.gen(function* () {
