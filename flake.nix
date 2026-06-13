@@ -38,6 +38,7 @@
               mkdir -p $out/bin
               cp bun $out/bin/bun
               chmod +x $out/bin/bun
+              patchelf --set-interpreter "${prev.glibc}/lib64/ld-linux-x86-64.so.2" $out/bin/bun
               patchelf --set-rpath "${prev.glibc}/lib" $out/bin/bun
             '';
             meta = prev.bun.meta // { description = "Bun runtime 1.3.14"; };
