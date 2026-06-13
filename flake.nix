@@ -14,7 +14,41 @@
         "aarch64-darwin"
         "x86_64-darwin"
       ];
-      forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+      bunOverlay = final: prev: {
+        bun =
+          let
+            system = final.stdenv.hostPlatform.system;
+            zipName =
+              if system == "x86_64-linux" then "bun-linux-x64.zip"
+              else if system == "aarch64-linux" then "bun-linux-aarch64.zip"
+              else if system == "aarch64-darwin" then "bun-darwin-aarch64.zip"
+              else "bun-darwin-x64.zip";
+            zipUrl = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.14/${zipName}";
+            zipHash =
+              if system == "x86_64-linux" then "sha256-i/7tX8lxLhccNF10IHg6XCQldgOID3wGNvg6y6xWM6E="
+              else "sha256-fake";
+          in
+          prev.stdenvNoCC.mkDerivation {
+            pname = "bun";
+            version = "1.3.14";
+            src = prev.fetchzip {
+              url = zipUrl;
+              hash = zipHash;
+            };
+            installPhase = ''
+              mkdir -p $out/bin $out/lib
+              cp bun $out/bin/bun
+              chmod +x $out/bin/bun
+              cp -r lib/* $out/lib/ 2>/dev/null || true
+            '';
+            meta = prev.bun.meta // { description = "Bun runtime 1.3.14"; };
+          };
+      };
+      pkgsFor = system: import nixpkgs {
+        inherit system;
+        overlays = [ bunOverlay ];
+      };
+      forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f (pkgsFor system));
       rev = self.shortRev or self.dirtyShortRev or "dirty";
     in
     {
