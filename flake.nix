@@ -26,18 +26,19 @@
             zipUrl = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.14/${zipName}";
             zipHash = "sha256-i/7tX8lxLhccNF10IHg6XCQldgOID3wGNvg6y6xWM6E=";
           in
-          prev.stdenvNoCC.mkDerivation {
+          prev.stdenv.mkDerivation {
             pname = "bun";
             version = "1.3.14";
             src = prev.fetchzip {
               url = zipUrl;
               hash = zipHash;
             };
+            nativeBuildInputs = [ prev.patchelf ];
             installPhase = ''
-              mkdir -p $out/bin $out/lib
-              cp bun $out/bin/bun
+              mkdir -p $out/bin
+              cp bun-linux-x64/bun $out/bin/bun
               chmod +x $out/bin/bun
-              cp -r lib/* $out/lib/ 2>/dev/null || true
+              patchelf --set-rpath "${prev.glibc}/lib" $out/bin/bun
             '';
             meta = prev.bun.meta // { description = "Bun runtime 1.3.14"; };
           };
