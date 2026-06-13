@@ -24,9 +24,7 @@
               else if system == "aarch64-darwin" then "bun-darwin-aarch64.zip"
               else "bun-darwin-x64.zip";
             zipUrl = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.14/${zipName}";
-            zipHash =
-              if system == "x86_64-linux" then "sha256-i/7tX8lxLhccNF10IHg6XCQldgOID3wGNvg6y6xWM6E="
-              else "sha256-fake";
+            zipHash = prev.lib.fakeHash;
           in
           prev.stdenvNoCC.mkDerivation {
             pname = "bun";
