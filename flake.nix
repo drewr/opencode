@@ -36,7 +36,7 @@
             nativeBuildInputs = [ prev.patchelf ];
             installPhase = ''
               mkdir -p $out/bin
-              cp bun-linux-x64/bun $out/bin/bun
+              cp bun $out/bin/bun
               chmod +x $out/bin/bun
               patchelf --set-rpath "${prev.glibc}/lib" $out/bin/bun
             '';
