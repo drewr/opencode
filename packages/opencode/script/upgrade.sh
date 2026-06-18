@@ -116,9 +116,13 @@ fi
 
 # Update version check in packages/script/src/index.ts
 if [[ "$needs_version_check_update" == true ]]; then
-  info "Relaxing bun version check to ^1..."
-  sed -i 's/const expectedBunVersionRange = `\\^${expectedBunVersion}`/const expectedBunVersionRange = `^1`/' \
-    packages/script/src/index.ts
+  if grep -q 'const expectedBunVersionRange = `^1`' packages/script/src/index.ts; then
+    info "Bun version check already relaxed to ^1, skipping."
+  else
+    info "Relaxing bun version check to ^1..."
+    sed -i 's/const expectedBunVersionRange = `\\^${expectedBunVersion}`/const expectedBunVersionRange = `^1`/' \
+      packages/script/src/index.ts
+  fi
 fi
 
 # ── 8. Commit ───────────────────────────────────────────────────────
