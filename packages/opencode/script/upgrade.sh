@@ -8,6 +8,11 @@ REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 UPSTREAM="upstream"
 BRANCH="dev"
 
+# Ensure SSH agent socket is available (stable symlink from sshd rc)
+if [[ -L "$HOME/.ssh/ssh_auth_sock" ]]; then
+  export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
+fi
+
 # ── helpers ──────────────────────────────────────────────────────────
 info()  { echo "[upgrade] $*"; }
 warn()  { echo "[upgrade] WARNING: $*" >&2; }
@@ -33,7 +38,7 @@ if [[ "$current_branch" != "$BRANCH" ]]; then
   git switch "$BRANCH"
 fi
 
-if [[ -n "$(git status --porcelain)" ]]; then
+if [[ -n "$(git status --porcelain -u no)" ]]; then
   die "Working tree is dirty. Commit or stash changes before upgrading."
 fi
 
@@ -70,7 +75,7 @@ local_pkg_manager="$(grep -o '"packageManager"[[:space:]]*:[[:space:]]*"[^"]*"' 
 local_bun_version="${local_pkg_manager#@bun}"
 
 # ── 5. Read nixpkgs bun version ─────────────────────────────────────
-nixpkgs_bun_version="$(nix eval --impure --expr \
+nixpkgs_bun_version="$(nix eval --impure --raw --expr \
   '(import <nixpkgs> { system = "x86_64-linux"; }).bun.version' 2>/dev/null || echo "unknown")"
 
 info "Local packageManager: $local_pkg_manager"
@@ -117,7 +122,7 @@ if [[ "$needs_version_check_update" == true ]]; then
 fi
 
 # ── 8. Commit ───────────────────────────────────────────────────────
-git add package.json packages/script/src/index.ts
+git add package.json packages/script/src/index.ts packages/opencode/script/upgrade.sh
 git -c user.signingkey= commit -m "chore: upgrade to upstream $upstream_commit (bun@$upstream_bun_version)"
 
 # ── 9. Build via nix ────────────────────────────────────────────────
