@@ -65,14 +65,14 @@ info "Upstream is at $upstream_commit; local is at $local_commit"
 upstream_pkg_manager="$(git show "$UPSTREAM/$BRANCH:package.json" | \
   grep -o '"packageManager"[[:space:]]*:[[:space:]]*"[^"]*"' | \
   grep -o 'bun@[^"]*')"
-upstream_bun_version="${upstream_pkg_manager#@bun}"
+upstream_bun_version="${upstream_pkg_manager#bun@}"
 
 info "Upstream packageManager: $upstream_pkg_manager"
 
 # ── 4. Read local packageManager version ────────────────────────────
 local_pkg_manager="$(grep -o '"packageManager"[[:space:]]*:[[:space:]]*"[^"]*"' package.json | \
   grep -o 'bun@[^"]*')"
-local_bun_version="${local_pkg_manager#@bun}"
+local_bun_version="${local_pkg_manager#bun@}"
 
 # ── 5. Read nixpkgs bun version ─────────────────────────────────────
 nixpkgs_bun_version="$(nix eval --impure --raw --expr \
